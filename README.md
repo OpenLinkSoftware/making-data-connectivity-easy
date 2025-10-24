@@ -12,7 +12,9 @@ Use of our JDBC or ODBC-JDBC bridge drivers depends on an easy to used experienc
 2. Ensure the CLASSPATH operating system environment variable contains an entry for each of the JAR files of each of the JDBC Drivers of interest. 
 3. Save the Java source code to a file e.g., `UniversalJDBCTest.java`
 4. Compile the .java source code using: ` javac -cp ".:/{JDBC-JAR-FILES-DIRECTORY}/*" UniversalJDBCTest.java` e.g., ` javac -cp ".:/Library/Java/Extensions/*" UniversalJDBCTest.java`
-5. Run the compiled (.class) using: ` java -cp ".:/{JDBC-JAR-FILES-DIRECTORY}/*" UniversalJDBCTest` e.g., ` java -cp ".:/Library/Java/Extensions/*" UniversalJDBCTest`
+5. Run the compiled program (.class) using: ` java -cp ".:/{JDBC-JAR-FILES-DIRECTORY}/*" UniversalJDBCTest` e.g., ` java -cp ".:/Library/Java/Extensions/*" UniversalJDBCTest` -- if you don't want to depend on $CLASSPATH for picking up JDBC Driver JAR file locations
+6. Run the compiled program (.class) using: ` java UniversalJDBCTest` -- if you are depending on $CLASSPATH for picking up JDBC Driver JAR file locations
+
 
 #### Usage Examples
 
