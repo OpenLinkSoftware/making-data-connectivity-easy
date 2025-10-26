@@ -156,7 +156,7 @@ public class UniversalJDBCTestPro3 extends JFrame {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        queryArea = new JTextArea("SELECT 1;", 5, 80);
+        queryArea = new JTextArea("SELECT 1", 5, 80);
         queryArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
         JScrollPane queryScroll = new JScrollPane(queryArea);
 
