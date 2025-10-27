@@ -107,14 +107,28 @@ public class UniversalJDBCTestFull {
             password = scanner.nextLine();
         }
 
+        // Determine the appropriate test query
+        String testQuery;
+        if (driverName.startsWith("Informix")) {
+            // Informix-specific query for system information
+            testQuery = "SELECT FIRST 1 DBINFO('version','full') FROM systables";
+            System.out.println("\n[3] Informix driver selected. Using Informix-specific test query.");
+        } else {
+            // Generic query for other drivers
+            testQuery = "SELECT 1";
+            System.out.println("\n[3] Using generic test query.");
+        }
+        
+        System.out.println("    Test Query: " + testQuery);
+
         // Connect and run metadata/test
-        System.out.println("\n[2] Connecting to: " + jdbcUrl);
+        System.out.println("\n[4] Connecting to: " + jdbcUrl);
         try (Connection conn = DriverManager.getConnection(jdbcUrl, username, password)) {
             System.out.println("    ✓ Connection established successfully");
 
             DatabaseMetaData metaData = conn.getMetaData();
 
-            System.out.println("\n[3] Database Metadata:");
+            System.out.println("\n[5] Database Metadata:");
             System.out.println("    Database Product Name: " + metaData.getDatabaseProductName());
             System.out.println("    Database Product Version: " + metaData.getDatabaseProductVersion());
             System.out.println("    Database Major/Minor Version: " + metaData.getDatabaseMajorVersion() + "."
@@ -127,20 +141,28 @@ public class UniversalJDBCTestFull {
             System.out.println("    Supports Batch Updates: " + metaData.supportsBatchUpdates());
             System.out.println("    Supports Stored Procedures: " + metaData.supportsStoredProcedures());
 
-            // Test query
-            System.out.println("\n[4] Executing test query...");
+            // Execute the determined test query
+            System.out.println("\n[6] Executing test query...");
             try (Statement stmt = conn.createStatement()) {
-                ResultSet rs = stmt.executeQuery("SELECT 1");
+                ResultSet rs = stmt.executeQuery(testQuery);
                 if (rs.next()) {
                     System.out.println("    ✓ Query executed successfully");
-                    System.out.println("    Test value: " + rs.getInt(1));
+                    
+                    // Display result, handling different result types for generic vs. Informix query
+                    if (driverName.startsWith("Informix")) {
+                        // The Informix query returns a string with version info
+                        System.out.println("    Informix Version Info: " + rs.getString(1));
+                    } else {
+                        // The generic query returns the integer '1'
+                        System.out.println("    Test value: " + rs.getInt(1));
+                    }
                 }
             } catch (SQLException e) {
                 System.err.println("    ✗ Test query failed: " + e.getMessage());
             }
 
             // List catalogs
-            System.out.println("\n[5] Available Catalogs:");
+            System.out.println("\n[7] Available Catalogs:");
             try (ResultSet catalogs = metaData.getCatalogs()) {
                 boolean hasCatalogs = false;
                 while (catalogs.next()) {
@@ -152,7 +174,7 @@ public class UniversalJDBCTestFull {
             }
 
             // List schemas
-            System.out.println("\n[6] Available Schemas:");
+            System.out.println("\n[8] Available Schemas:");
             try (ResultSet schemas = metaData.getSchemas()) {
                 boolean hasSchemas = false;
                 while (schemas.next()) {
@@ -164,7 +186,7 @@ public class UniversalJDBCTestFull {
             }
 
             // List tables
-            System.out.println("\n[7] Available Tables in Database:");
+            System.out.println("\n[9] Available Tables in Database:");
             try (ResultSet tables = metaData.getTables(null, null, "%", new String[] { "TABLE" })) {
                 boolean hasTables = false;
                 while (tables.next()) {
@@ -176,7 +198,7 @@ public class UniversalJDBCTestFull {
             }
 
             // Table types
-            System.out.println("\n[8] Supported Table Types:");
+            System.out.println("\n[10] Supported Table Types:");
             try (ResultSet tableTypes = metaData.getTableTypes()) {
                 while (tableTypes.next()) {
                     System.out.println("    - " + tableTypes.getString("TABLE_TYPE"));
@@ -184,7 +206,7 @@ public class UniversalJDBCTestFull {
             }
 
             // Close connection
-            System.out.println("\n[9] Closing connection...");
+            System.out.println("\n[11] Closing connection...");
             System.out.println("    ✓ Connection closed successfully");
 
         } catch (SQLException e) {
