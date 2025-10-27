@@ -29,12 +29,13 @@ public class UniversalJDBCTestPro3 extends JFrame {
 
     // Driver information
     private static class DriverInfo {
-        String className, urlExample, notes;
+        String className, urlExample, notes, defaultQuery;
 
-        DriverInfo(String c, String u, String n) {
+        DriverInfo(String c, String u, String n, String dq) {
             className = c;
             urlExample = u;
             notes = n;
+            defaultQuery = dq;
         }
     }
 
@@ -43,27 +44,44 @@ public class UniversalJDBCTestPro3 extends JFrame {
         DRIVERS.put("Virtuoso (OpenLink)", new DriverInfo(
                 "virtuoso.jdbc4.Driver",
                 "jdbc:virtuoso://localhost:1111/UID=dba/PWD=dba",
-                "OpenLink Virtuoso Universal Server"));
+                "OpenLink Virtuoso Universal Server",
+                "SELECT TOP 10 * FROM DB.DBA.RDF_QUAD"));
+
         DRIVERS.put("Oracle", new DriverInfo(
                 "oracle.jdbc.OracleDriver",
-                "jdbc:oracle:thin:@//localhost:1521/orclpdb1",
-                "Oracle Database 23c"));
+                "jdbc:oracle:thin:@oracle-host:1521:XE",
+                "Oracle Database 23c",
+                "SELECT 1 FROM DUAL"));
+
         DRIVERS.put("PostgreSQL", new DriverInfo(
                 "org.postgresql.Driver",
                 "jdbc:postgresql://localhost:5432/mydb?user=postgres&password=secret",
-                "PostgreSQL 42.x"));
+                "PostgreSQL 42.x",
+                "SELECT 1"));
+
         DRIVERS.put("Microsoft SQL Server", new DriverInfo(
                 "com.microsoft.sqlserver.jdbc.SQLServerDriver",
                 "jdbc:sqlserver://localhost:1433;databaseName=mydb;user=sa;password=YourStrong!Passw0rd;",
-                "SQL Server"));
+                "SQL Server",
+                "SELECT TOP 1 1"));
+
+        DRIVERS.put("Informix", new DriverInfo(
+                "com.informix.jdbc.IfxDriver",
+                "jdbc:informix-sqli://informix-host:27669/stores_demo:INFORMIXSERVER=YourInformixServer",
+                "Informix Connector",
+                "SELECT FIRST 1 1 FROM systables"));
+
         DRIVERS.put("MySQL", new DriverInfo(
                 "com.mysql.cj.jdbc.Driver",
                 "jdbc:mysql://localhost:3306/mydb?user=root&password=secret",
-                "MySQL Connector/J"));
+                "MySQL Connector/J",
+                "SELECT 1"));
+
         DRIVERS.put("OpenLink Generic", new DriverInfo(
                 "openlink.jdbc4.Driver",
                 "jdbc:openlink://ODBC/DSN=Local Virtuoso;UID=dba;PWD=dba;",
-                "OpenLink Multi-Tier JDBC"));
+                "OpenLink Multi-Tier JDBC",
+                "SELECT 1"));
     }
 
     public UniversalJDBCTestPro3() {
@@ -96,6 +114,9 @@ public class UniversalJDBCTestPro3 extends JFrame {
         driverBox.addActionListener(e -> {
             DriverInfo info = DRIVERS.get(driverBox.getSelectedItem());
             urlField.setText(info.urlExample);
+            if (queryArea != null) {
+                queryArea.setText(info.defaultQuery);
+            }
         });
 
         gbc.gridx = 0;
@@ -156,7 +177,8 @@ public class UniversalJDBCTestPro3 extends JFrame {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        queryArea = new JTextArea("SELECT 1", 5, 80);
+        DriverInfo info = DRIVERS.get(driverBox.getSelectedItem());
+        queryArea = new JTextArea(info.defaultQuery, 5, 80);
         queryArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
         JScrollPane queryScroll = new JScrollPane(queryArea);
 
@@ -227,22 +249,34 @@ public class UniversalJDBCTestPro3 extends JFrame {
     }
 
     private void disconnectDB() {
-        if(currentConnection != null){
-            try{
+        if (currentConnection != null) {
+            try {
                 currentConnection.close();
                 logConn("✓ Connection closed.");
-                currentConnection=null;
-            }catch(Exception ex){
+                currentConnection = null;
+            } catch (Exception ex) {
                 logConn("✗ Error closing connection: " + ex.getMessage());
             }
-        } else logConn("No active connection.");
+        } else {
+            logConn("No active connection.");
+        }
+
+        // --- Reset UI to default ---
+        driverBox.setSelectedIndex(0); // first driver
+        DriverInfo info = DRIVERS.get(driverBox.getSelectedItem());
+        urlField.setText(info.urlExample);
+        userField.setText("");
+        passField.setText("");
+        if (queryArea != null) {
+            queryArea.setText(info.defaultQuery);
+        }
     }
 
     // ---------- Query Execution ----------
     private void runQuery() {
-        if(currentConnection==null){
-            JOptionPane.showMessageDialog(this,"Please connect to a database first.",
-                    "No Connection",JOptionPane.WARNING_MESSAGE);
+        if (currentConnection == null) {
+            JOptionPane.showMessageDialog(this, "Please connect to a database first.",
+                    "No Connection", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
@@ -253,31 +287,33 @@ public class UniversalJDBCTestPro3 extends JFrame {
             @Override
             protected Void doInBackground() {
                 String sql = queryArea.getText().trim();
-                try(Statement stmt=currentConnection.createStatement()){
+                try (Statement stmt = currentConnection.createStatement()) {
                     boolean hasResult = stmt.execute(sql);
-                    if(hasResult){
+                    if (hasResult) {
                         ResultSet rs = stmt.getResultSet();
                         ResultSetMetaData md = rs.getMetaData();
                         int cols = md.getColumnCount();
                         String[] colNames = new String[cols];
-                        for(int i=1;i<=cols;i++) colNames[i-1]=md.getColumnLabel(i);
+                        for (int i = 1; i <= cols; i++)
+                            colNames[i - 1] = md.getColumnLabel(i);
 
-                        DefaultTableModel model=new DefaultTableModel(colNames,0);
-                        while(rs.next()){
-                            Object[] row=new Object[cols];
-                            for(int i=1;i<=cols;i++) row[i-1]=rs.getObject(i);
+                        DefaultTableModel model = new DefaultTableModel(colNames, 0);
+                        while (rs.next()) {
+                            Object[] row = new Object[cols];
+                            for (int i = 1; i <= cols; i++)
+                                row[i - 1] = rs.getObject(i);
                             model.addRow(row);
                         }
                         resultTable.setModel(model);
 
-                        for(int i=0;i<cols;i++){
+                        for (int i = 0; i < cols; i++) {
                             resultTable.getColumnModel().getColumn(i).setCellRenderer(new LinkCellRenderer());
                         }
                         logQuery("✓ Query executed successfully. " + model.getRowCount() + " rows returned.");
                     } else {
                         logQuery("✓ Update executed successfully. " + stmt.getUpdateCount() + " rows affected.");
                     }
-                } catch(Exception ex){
+                } catch (Exception ex) {
                     logQuery("✗ Query failed: " + ex.getMessage());
                 }
                 return null;
@@ -285,7 +321,6 @@ public class UniversalJDBCTestPro3 extends JFrame {
 
             @Override
             protected void done() {
-                runQueryButton.setText("Run Query");
                 runQueryButton.setText("Run Query");
                 runQueryButton.setEnabled(true);
             }
